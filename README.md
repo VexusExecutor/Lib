@@ -67,5 +67,5 @@ end)
 🎮 Works on 95% of Roblox games - some anti-cheats may block features
 
 ❔ How to report bugs?
-🐛 Open an issue on GitHub or join our Discord
+🐛 Open an issue on GitHub or join our Discord https://discord.gg/yusr8MeTGz
 
