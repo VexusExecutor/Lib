@@ -24,7 +24,7 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/VexusExecutor/Lib/main/src.txt"))()
 Copy the loadstring above
 
-Paste into your executor (Synapse/Krnl/Fluxus)
+Paste into your executor (Synapse/Krnl/Fluxus/Vexus)
 
 Execute and enjoy the GUI!
 
