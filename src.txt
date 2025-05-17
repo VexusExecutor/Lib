@@ -1,5 +1,5 @@
--- Vexus UI Library v2.4
--- Complete Professional Edition
+-- Vexus UI Library v3.0
+-- Premium Professional Edition
 
 local Vexus = {}
 
@@ -7,39 +7,79 @@ local Vexus = {}
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
 
 -- Configuration
 Vexus.Configuration = {
     SavePosition = true,
     SnapToEdges = true,
-    MinimizeHotkey = Enum.KeyCode.RightControl
+    SnapThreshold = 20,
+    MinimizeHotkey = Enum.KeyCode.RightControl,
+    BrandingDuration = 5,
+    AnimationSpeed = 0.25
 }
 
--- Enhanced Dark Blue Theme
+-- Premium Dark Blue Theme
 Vexus.Theme = {
     Default = {
         TextFont = "Gotham",
-        TextColor = Color3.fromRGB(220, 220, 220),
-        Background = Color3.fromRGB(12, 18, 33),
-        Topbar = Color3.fromRGB(18, 27, 45),
-        CloseButton = Color3.fromRGB(200, 60, 60),
-        CloseButtonHover = Color3.fromRGB(220, 80, 80),
-        NotificationBackground = Color3.fromRGB(20, 30, 50)
+        TextColor = Color3.fromRGB(230, 230, 230),
+        Background = Color3.fromRGB(10, 15, 30),
+        Topbar = Color3.fromRGB(15, 25, 45),
+        TopbarText = Color3.fromRGB(240, 240, 240),
+        CloseButton = Color3.fromRGB(180, 50, 50),
+        CloseButtonHover = Color3.fromRGB(200, 70, 70),
+        CloseButtonIcon = Color3.fromRGB(255, 255, 255),
+        NotificationBackground = Color3.fromRGB(20, 30, 55),
+        NotificationText = Color3.fromRGB(240, 240, 240),
+        BrandingBackground = Color3.fromRGB(15, 25, 45),
+        BrandingText = Color3.fromRGB(200, 200, 255),
+        ElementBackground = Color3.fromRGB(20, 30, 50),
+        ElementBackgroundHover = Color3.fromRGB(30, 45, 70),
+        ElementStroke = Color3.fromRGB(40, 60, 90)
     }
 }
+
+-- Utility Functions
+local function CreateRoundedFrame(parent, size, position, bgColor, cornerRadius)
+    local frame = Instance.new("Frame")
+    frame.Size = size
+    frame.Position = position
+    frame.BackgroundColor3 = bgColor
+    frame.BackgroundTransparency = 0
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = cornerRadius or UDim.new(0, 8)
+    corner.Parent = frame
+
+    return frame
+end
+
+local function CreateStroke(target, color, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Color = color
+    stroke.Thickness = thickness or 1
+    stroke.Parent = target
+    return stroke
+end
 
 function Vexus:CreateWindow(settings)
     settings = settings or {}
     local config = setmetatable(settings.Configuration or {}, {__index = Vexus.Configuration})
     local theme = setmetatable(settings.Theme or {}, {__index = Vexus.Theme.Default})
 
-    -- Create UI
+    -- Create UI Container
     local VexusUI = Instance.new("ScreenGui")
     VexusUI.Name = "VexusUI"
     VexusUI.ResetOnSpawn = false
     VexusUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    -- CoreGui handling
+    VexusUI.DisplayOrder = 999
+
+    -- Secure GUI
     if gethui then
         VexusUI.Parent = gethui()
     elseif syn and syn.protect_gui then
@@ -49,185 +89,369 @@ function Vexus:CreateWindow(settings)
         VexusUI.Parent = CoreGui
     end
 
-    -- Main Window
+    -- Main Window Frame
     local Main = Instance.new("Frame")
     Main.Name = "Main"
-    Main.Size = UDim2.new(0, 500, 0, 450)
+    Main.Size = UDim2.new(0, 550, 0, 500)
     Main.Position = UDim2.new(0.5, 0, 0.5, 0)
     Main.AnchorPoint = Vector2.new(0.5, 0.5)
     Main.BackgroundColor3 = theme.Background
+    Main.BackgroundTransparency = 0
+    Main.BorderSizePixel = 0
+    Main.ClipsDescendants = true
     Main.Visible = false
     Main.Parent = VexusUI
 
     -- Window Styling
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 8)
-    UICorner.Parent = Main
+    local windowCorner = Instance.new("UICorner")
+    windowCorner.CornerRadius = UDim.new(0, 12)
+    windowCorner.Parent = Main
 
-    local UIStroke = Instance.new("UIStroke")
-    UIStroke.Thickness = 1
-    UIStroke.Color = Color3.fromRGB(45, 65, 100)
-    UIStroke.Parent = Main
+    CreateStroke(Main, theme.ElementStroke, 2)
 
-    -- Topbar with close button
-    local Topbar = Instance.new("Frame")
-    Topbar.Name = "Topbar"
-    Topbar.Size = UDim2.new(1, 0, 0, 40)
-    Topbar.BackgroundColor3 = theme.Topbar
-    Topbar.Parent = Main
+    -- Topbar
+    local Topbar = CreateRoundedFrame(Main, UDim2.new(1, 0, 0, 45), UDim2.new(0, 0, 0, 0), theme.Topbar)
+    local topbarCorner = Instance.new("UICorner")
+    topbarCorner.CornerRadius = UDim.new(0, 12)
+    topbarCorner.Parent = Topbar
 
-    -- Close Button (X)
-    local CloseButton = Instance.new("TextButton")
+    -- Title
+    local Title = Instance.new("TextLabel")
+    Title.Name = "Title"
+    Title.Text = settings.Name or "Vexus UI"
+    Title.Font = Enum.Font.GothamSemibold
+    Title.TextSize = 16
+    Title.TextColor3 = theme.TopbarText
+    Title.BackgroundTransparency = 1
+    Title.Size = UDim2.new(0.7, 0, 1, 0)
+    Title.Position = UDim2.new(0, 15, 0, 0)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.TextTransparency = 1
+    Title.Parent = Topbar
+
+    -- Premium Close Button
+    local CloseButton = Instance.new("Frame")
     CloseButton.Name = "CloseButton"
-    CloseButton.Text = "X"
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.TextSize = 16
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.BackgroundColor3 = theme.CloseButton
-    CloseButton.Size = UDim2.new(0, 30, 0, 30)
-    CloseButton.Position = UDim2.new(1, -35, 0.5, 0)
+    CloseButton.Size = UDim2.new(0, 32, 0, 32)
+    CloseButton.Position = UDim2.new(1, -40, 0.5, 0)
     CloseButton.AnchorPoint = Vector2.new(1, 0.5)
+    CloseButton.BackgroundColor3 = theme.CloseButton
+    CloseButton.BackgroundTransparency = 0
     CloseButton.Parent = Topbar
 
-    -- Close Button Styling
-    local CloseCorner = Instance.new("UICorner")
-    CloseCorner.CornerRadius = UDim.new(0, 6)
-    CloseCorner.Parent = CloseButton
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(1, 0)
+    closeCorner.Parent = CloseButton
 
-    -- Close Button Hover Effects
-    CloseButton.MouseEnter:Connect(function()
-        TweenService:Create(CloseButton, TweenInfo.new(0.2), {
-            BackgroundColor3 = theme.CloseButtonHover
+    local closeIcon = Instance.new("TextLabel")
+    closeIcon.Text = "×"
+    closeIcon.Font = Enum.Font.GothamBold
+    closeIcon.TextSize = 20
+    closeIcon.TextColor3 = theme.CloseButtonIcon
+    closeIcon.BackgroundTransparency = 1
+    closeIcon.Size = UDim2.new(1, 0, 1, 0)
+    closeIcon.Position = UDim2.new(0, 0, 0, 0)
+    closeIcon.Parent = CloseButton
+
+    -- Close Button Effects
+    local closeButton = Instance.new("TextButton")
+    closeButton.Text = ""
+    closeButton.BackgroundTransparency = 1
+    closeButton.Size = UDim2.new(1, 0, 1, 0)
+    closeButton.Parent = CloseButton
+
+    closeButton.MouseEnter:Connect(function()
+        TweenService:Create(CloseButton, TweenInfo.new(config.AnimationSpeed), {
+            BackgroundColor3 = theme.CloseButtonHover,
+            Size = UDim2.new(0, 34, 0, 34)
         }):Play()
     end)
 
-    CloseButton.MouseLeave:Connect(function()
-        TweenService:Create(CloseButton, TweenInfo.new(0.2), {
-            BackgroundColor3 = theme.CloseButton
+    closeButton.MouseLeave:Connect(function()
+        TweenService:Create(CloseButton, TweenInfo.new(config.AnimationSpeed), {
+            BackgroundColor3 = theme.CloseButton,
+            Size = UDim2.new(0, 32, 0, 32)
         }):Play()
+    end)
+
+    -- Dragging Functionality
+    local dragging, dragInput, dragStart, startPos
+
+    local function UpdateInput(input)
+        local delta = input.Position - dragStart
+        local newPos = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+        
+        -- Edge Snapping
+        if config.SnapToEdges then
+            local viewportSize = workspace.CurrentCamera.ViewportSize
+            local absPos = Main.AbsolutePosition
+            local absSize = Main.AbsoluteSize
+            
+            if absPos.X < config.SnapThreshold then
+                newPos = UDim2.new(0, 10, newPos.Y.Scale, newPos.Y.Offset)
+            elseif absPos.X + absSize.X > viewportSize.X - config.SnapThreshold then
+                newPos = UDim2.new(1, -absSize.X - 10, newPos.Y.Scale, newPos.Y.Offset)
+            end
+            
+            if absPos.Y < config.SnapThreshold then
+                newPos = UDim2.new(newPos.X.Scale, newPos.X.Offset, 0, 10)
+            elseif absPos.Y + absSize.Y > viewportSize.Y - config.SnapThreshold then
+                newPos = UDim2.new(newPos.X.Scale, newPos.X.Offset, 1, -absSize.Y - 10)
+            end
+        end
+        
+        Main.Position = newPos
+    end
+
+    Topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    Topbar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            UpdateInput(input)
+        end
+    end)
+
+    -- Minimize Functionality
+    local minimized = false
+    local originalSize = Main.Size
+    local originalPosition = Main.Position
+
+    local function ToggleMinimize()
+        minimized = not minimized
+        
+        if minimized then
+            TweenService:Create(Main, TweenInfo.new(config.AnimationSpeed, Enum.EasingStyle.Quad), {
+                Size = UDim2.new(0, 300, 0, 45)
+            }):Play()
+        else
+            TweenService:Create(Main, TweenInfo.new(config.AnimationSpeed, Enum.EasingStyle.Quad), {
+                Size = originalSize
+            }):Play()
+        end
+    end
+
+    -- Minimize Hotkey
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == config.MinimizeHotkey then
+            ToggleMinimize()
+        end
     end)
 
     -- Close Confirmation Dialog
-    local function showCloseConfirmation()
-        local Notification = Instance.new("Frame")
-        Notification.Name = "CloseConfirmation"
-        Notification.Size = UDim2.new(0, 300, 0, 120)
-        Notification.Position = UDim2.new(0.5, 0, 0.5, 0)
-        Notification.AnchorPoint = Vector2.new(0.5, 0.5)
-        Notification.BackgroundColor3 = theme.NotificationBackground
-        Notification.Parent = Main
+    local function ShowCloseConfirmation()
+        local overlay = Instance.new("Frame")
+        overlay.Name = "CloseConfirmationOverlay"
+        overlay.Size = UDim2.new(1, 0, 1, 0)
+        overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        overlay.BackgroundTransparency = 0.5
+        overlay.ZIndex = 10
+        overlay.Parent = Main
 
-        local NotificationCorner = Instance.new("UICorner")
-        NotificationCorner.CornerRadius = UDim.new(0, 8)
-        NotificationCorner.Parent = Notification
+        local dialog = CreateRoundedFrame(overlay, UDim2.new(0, 350, 0, 180), UDim2.new(0.5, 0, 0.5, 0), theme.NotificationBackground)
+        dialog.AnchorPoint = Vector2.new(0.5, 0.5)
+        dialog.ZIndex = 11
 
-        local Message = Instance.new("TextLabel")
-        Message.Text = "Would you like to unload the UI?"
-        Message.Font = Enum.Font.Gotham
-        Message.TextSize = 14
-        Message.TextColor3 = theme.TextColor
-        Message.BackgroundTransparency = 1
-        Message.Size = UDim2.new(1, -20, 0.5, 0)
-        Message.Position = UDim2.new(0, 10, 0, 10)
-        Message.Parent = Notification
+        local title = Instance.new("TextLabel")
+        title.Text = "Confirm Close"
+        title.Font = Enum.Font.GothamSemibold
+        title.TextSize = 18
+        title.TextColor3 = theme.NotificationText
+        title.BackgroundTransparency = 1
+        title.Size = UDim2.new(1, -20, 0, 40)
+        title.Position = UDim2.new(0, 10, 0, 10)
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.ZIndex = 12
+        title.Parent = dialog
 
-        local ButtonContainer = Instance.new("Frame")
-        ButtonContainer.BackgroundTransparency = 1
-        ButtonContainer.Size = UDim2.new(1, -20, 0, 40)
-        ButtonContainer.Position = UDim2.new(0, 10, 1, -50)
-        ButtonContainer.Parent = Notification
+        local message = Instance.new("TextLabel")
+        message.Text = "Are you sure you want to close the Vexus UI?"
+        message.Font = Enum.Font.Gotham
+        message.TextSize = 14
+        message.TextColor3 = theme.NotificationText
+        message.BackgroundTransparency = 1
+        message.Size = UDim2.new(1, -20, 0, 60)
+        message.Position = UDim2.new(0, 10, 0, 50)
+        message.TextWrapped = true
+        message.ZIndex = 12
+        message.Parent = dialog
 
-        local YesButton = Instance.new("TextButton")
-        YesButton.Text = "Yes"
-        YesButton.Size = UDim2.new(0.4, 0, 1, 0)
-        YesButton.Position = UDim2.new(0, 0, 0, 0)
-        YesButton.Parent = ButtonContainer
+        local buttonContainer = Instance.new("Frame")
+        buttonContainer.BackgroundTransparency = 1
+        buttonContainer.Size = UDim2.new(1, -20, 0, 50)
+        buttonContainer.Position = UDim2.new(0, 10, 1, -60)
+        buttonContainer.ZIndex = 12
+        buttonContainer.Parent = dialog
 
-        local NoButton = Instance.new("TextButton")
-        NoButton.Text = "No"
-        NoButton.Size = UDim2.new(0.4, 0, 1, 0)
-        NoButton.Position = UDim2.new(0.6, 0, 0, 0)
-        NoButton.Parent = ButtonContainer
+        local yesButton = CreateRoundedFrame(buttonContainer, UDim2.new(0.4, 0, 1, 0), UDim2.new(0, 0, 0, 0), theme.CloseButton)
+        yesButton.ZIndex = 13
 
-        -- Style buttons
-        for _, btn in pairs({YesButton, NoButton}) do
-            btn.Font = Enum.Font.GothamSemibold
-            btn.TextSize = 14
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.BackgroundColor3 = Color3.fromRGB(40, 60, 90)
+        local yesText = Instance.new("TextLabel")
+        yesText.Text = "YES"
+        yesText.Font = Enum.Font.GothamBold
+        yesText.TextSize = 14
+        yesText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        yesText.BackgroundTransparency = 1
+        yesText.Size = UDim2.new(1, 0, 1, 0)
+        yesText.ZIndex = 14
+        yesText.Parent = yesButton
+
+        local noButton = CreateRoundedFrame(buttonContainer, UDim2.new(0.4, 0, 1, 0), UDim2.new(0.6, 0, 0, 0), theme.ElementBackground)
+        noButton.ZIndex = 13
+
+        local noText = Instance.new("TextLabel")
+        noText.Text = "NO"
+        noText.Font = Enum.Font.GothamBold
+        noText.TextSize = 14
+        noText.TextColor3 = theme.TextColor
+        noText.BackgroundTransparency = 1
+        noText.Size = UDim2.new(1, 0, 1, 0)
+        noText.ZIndex = 14
+        noText.Parent = noButton
+
+        -- Button interactivity
+        local function SetupButton(button, hoverColor, clickFunc)
+            local text = button:FindFirstChildWhichIsA("TextLabel")
+            local originalColor = button.BackgroundColor3
             
-            local btnCorner = Instance.new("UICorner")
-            btnCorner.CornerRadius = UDim.new(0, 6)
-            btnCorner.Parent = btn
-            
-            btn.MouseEnter:Connect(function()
-                TweenService:Create(btn, TweenInfo.new(0.2), {
-                    BackgroundColor3 = Color3.fromRGB(60, 80, 110)
+            button.MouseEnter:Connect(function()
+                TweenService:Create(button, TweenInfo.new(config.AnimationSpeed), {
+                    BackgroundColor3 = hoverColor
                 }):Play()
             end)
             
-            btn.MouseLeave:Connect(function()
-                TweenService:Create(btn, TweenInfo.new(0.2), {
-                    BackgroundColor3 = Color3.fromRGB(40, 60, 90)
+            button.MouseLeave:Connect(function()
+                TweenService:Create(button, TweenInfo.new(config.AnimationSpeed), {
+                    BackgroundColor3 = originalColor
                 }):Play()
+            end)
+            
+            local buttonClick = Instance.new("TextButton")
+            buttonClick.Text = ""
+            buttonClick.BackgroundTransparency = 1
+            buttonClick.Size = UDim2.new(1, 0, 1, 0)
+            buttonClick.ZIndex = 15
+            buttonClick.Parent = button
+            
+            buttonClick.MouseButton1Click:Connect(function()
+                clickFunc()
             end)
         end
 
-        YesButton.MouseButton1Click:Connect(function()
+        SetupButton(yesButton, theme.CloseButtonHover, function()
             VexusUI:Destroy()
         end)
 
-        NoButton.MouseButton1Click:Connect(function()
-            Notification:Destroy()
+        SetupButton(noButton, theme.ElementBackgroundHover, function()
+            overlay:Destroy()
         end)
     end
 
-    CloseButton.MouseButton1Click:Connect(showCloseConfirmation)
+    closeButton.MouseButton1Click:Connect(ShowCloseConfirmation)
 
-    -- "Made by Vexus" Notification
-    local function showBrandingNotification()
-        local BrandNotification = Instance.new("Frame")
-        BrandNotification.Name = "BrandNotification"
-        BrandNotification.Size = UDim2.new(0, 200, 0, 40)
-        BrandNotification.Position = UDim2.new(0, 10, 1, -50)
-        BrandNotification.AnchorPoint = Vector2.new(0, 1)
-        BrandNotification.BackgroundColor3 = theme.NotificationBackground
-        BrandNotification.Parent = VexusUI
+    -- Premium Branding Notification
+    local function ShowBrandingNotification()
+        local brandingFrame = CreateRoundedFrame(VexusUI, UDim2.new(0, 200, 0, 40), UDim2.new(0, 20, 1, -20), theme.BrandingBackground)
+        brandingFrame.AnchorPoint = Vector2.new(0, 1)
+        brandingFrame.ZIndex = 5
 
-        local BrandCorner = Instance.new("UICorner")
-        BrandCorner.CornerRadius = UDim.new(0, 6)
-        BrandCorner.Parent = BrandNotification
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 25, 45)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 40, 70))
+        })
+        gradient.Rotation = -15
+        gradient.Parent = brandingFrame
 
-        local BrandLabel = Instance.new("TextLabel")
-        BrandLabel.Text = "Made by Vexus"
-        BrandLabel.Font = Enum.Font.GothamSemibold
-        BrandLabel.TextSize = 14
-        BrandLabel.TextColor3 = theme.TextColor
-        BrandLabel.BackgroundTransparency = 1
-        BrandLabel.Size = UDim2.new(1, 0, 1, 0)
-        BrandLabel.Parent = BrandNotification
+        local brandingText = Instance.new("TextLabel")
+        brandingText.Text = "MADE BY VEXUS"
+        brandingText.Font = Enum.Font.GothamBold
+        brandingText.TextSize = 14
+        brandingText.TextColor3 = theme.BrandingText
+        brandingText.BackgroundTransparency = 1
+        brandingText.Size = UDim2.new(1, -10, 1, 0)
+        brandingText.Position = UDim2.new(0, 10, 0, 0)
+        brandingText.TextXAlignment = Enum.TextXAlignment.Left
+        brandingText.ZIndex = 6
+        brandingText.Parent = brandingFrame
 
-        -- Auto-fade after 5 seconds
-        delay(5, function()
-            TweenService:Create(BrandNotification, TweenInfo.new(1), {
-                BackgroundTransparency = 1
+        local icon = Instance.new("ImageLabel")
+        icon.Image = "rbxassetid://7072718362" -- Replace with your logo asset ID
+        icon.Size = UDim2.new(0, 20, 0, 20)
+        icon.Position = UDim2.new(1, -25, 0.5, 0)
+        icon.AnchorPoint = Vector2.new(1, 0.5)
+        icon.BackgroundTransparency = 1
+        icon.ZIndex = 6
+        icon.Parent = brandingFrame
+
+        -- Animate entrance
+        brandingFrame.Position = UDim2.new(0, 20, 1, 50)
+        TweenService:Create(brandingFrame, TweenInfo.new(config.AnimationSpeed * 2, Enum.EasingStyle.Quint), {
+            Position = UDim2.new(0, 20, 1, -20)
+        }):Play()
+
+        -- Auto-dismiss after duration
+        delay(config.BrandingDuration, function()
+            TweenService:Create(brandingFrame, TweenInfo.new(config.AnimationSpeed * 2, Enum.EasingStyle.Quint), {
+                Position = UDim2.new(0, 20, 1, 50)
             }):Play()
-            TweenService:Create(BrandLabel, TweenInfo.new(1), {
-                TextTransparency = 1
-            }):Play()
-            wait(1)
-            BrandNotification:Destroy()
+            wait(config.AnimationSpeed * 2)
+            brandingFrame:Destroy()
         end)
     end
 
-    -- Initialize window
+    -- Initialize Window
     Main.Visible = true
-    showBrandingNotification()
+    Main.Size = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(Main, TweenInfo.new(config.AnimationSpeed * 1.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = originalSize
+    }):Play()
 
-    -- Return window functions
-    local Window = {}
-    -- [Include your other window functions here]
-    
+    TweenService:Create(Title, TweenInfo.new(config.AnimationSpeed * 2), {
+        TextTransparency = 0
+    }):Play()
+
+    -- Show branding after slight delay
+    delay(0.5, ShowBrandingNotification)
+
+    -- Window API
+    local Window = {
+        Minimize = ToggleMinimize,
+        Close = function()
+            ShowCloseConfirmation()
+        end,
+        Notify = function(notificationSettings)
+            -- Notification implementation would go here
+        end,
+        CreateTab = function(tabName)
+            -- Tab creation implementation would go here
+            local Tab = {}
+            return Tab
+        end
+    }
+
     return Window
 end
 
