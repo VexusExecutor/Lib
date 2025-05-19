@@ -1,6 +1,6 @@
+
 --[[ Credits
-    Matas#3535 @matas - Created UI
-    bored#9316 @wally hub user - Helped make library
+ Insperation taken from  Matas#3535 bored#9316
 ]]
 -- // Variables
 local ws = game:GetService("Workspace")
@@ -48,9 +48,9 @@ local sections = {}
 -- Theme Variables
 --local themes = {}
 local theme = {
-    accent = Color3.fromRGB(50, 100, 255), -- keep if you want blue accents
-    light_contrast = Color3.fromRGB(0, 60, 255), -- BLUE background
-    dark_contrast = Color3.fromRGB(0, 30, 150), -- DARKER BLUE contrast
+    accent = Color3.fromRGB(50, 100, 255),
+    light_contrast = Color3.fromRGB(30, 30, 30),
+    dark_contrast = Color3.fromRGB(20, 20, 20),
     outline = Color3.fromRGB(0, 0, 0),
     inline = Color3.fromRGB(50, 50, 50),
     textcolor = Color3.fromRGB(255, 255, 255),
@@ -58,7 +58,7 @@ local theme = {
     cursoroutline = Color3.fromRGB(10, 10, 10),
     font = 2,
     textsize = 13
-}}
+}
 -- // Utility Functions
 do
     function utility:Size(xScale,xOffset,yScale,yOffset,instance)
@@ -367,10 +367,11 @@ do
 	pages.__index = pages
 	sections.__index = sections
     --
-   function library:New(info)
-    local info = info or {}
-    info.name = "Vexus UI" -- 🔵 force the name to be "Vexus UI"
-    local name = info.name or info.Name or info.title or info.Title or "UI Title"
+    function library:New(info)
+		local info = info or {}
+        local name = info.name or info.Name or info.title or info.Title or "UI Title"
+        local size = info.size or info.Size or Vector2.new(504,604)
+        local accent = info.accent or info.Accent or info.color or info.Color or theme.accent
         --
         theme.accent = accent
         --
@@ -601,7 +602,7 @@ do
             window.watermark = {visible = false}
             --
             local info = info or {}
-            local watermark_name = "Made by Vexus Team"
+            local watermark_name = info.name or info.Name or info.title or info.Title or string.format("$$ Splix || uid : %u || ping : %u || fps : %u", 1, 100, 200)
             --
             local text_bounds = utility:GetTextBounds(watermark_name, theme.textsize, theme.font)
             --
