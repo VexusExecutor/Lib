@@ -1,11 +1,11 @@
--- Vexus UI Library v4.0
--- Ultimate Premium Edition (1000+ lines of peak code)
+-- Vexus UI Library v5.0
+-- Ultimate Premium Edition with Advanced Tab System
 
 local Vexus = {}
 
 --[[
 =================================================================
-SECTION 1: CORE CONFIGURATION
+SECTION 1: CORE CONFIGURATION & SERVICES
 =================================================================
 ]]
 
@@ -16,11 +16,14 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
+local TextService = game:GetService("TextService")
 
--- Configuration
+-- Enhanced Configuration
 Vexus.Configuration = {
     SavePosition = true,
+    SaveKey = "VexusUIPosition_v5",
     MinimizeHotkey = Enum.KeyCode.RightControl,
+    ToggleHotkey = Enum.KeyCode.RightShift,
     BrandingDuration = 5,
     AnimationSpeed = 0.25,
     DefaultWindowSize = UDim2.new(0, 600, 0, 550),
@@ -32,12 +35,17 @@ Vexus.Configuration = {
     CloseButtonSize = 24,
     CloseButtonHoverSize = 26,
     TabHeight = 40,
-    ElementHeight = 40
+    ElementHeight = 40,
+    TabPadding = 5,
+    TabHighlightThickness = 3,
+    ScrollBarThickness = 5,
+    ScrollBarColor = Color3.fromRGB(100, 100, 100),
+    ScrollBarHoverColor = Color3.fromRGB(150, 150, 150)
 }
 
 --[[
 =================================================================
-SECTION 2: PREMIUM THEME SYSTEM
+SECTION 2: PREMIUM THEME SYSTEM WITH TAB SUPPORT
 =================================================================
 ]]
 
@@ -45,7 +53,7 @@ Vexus.Theme = {
     Default = {
         -- Core Colors
         Background = Color3.fromRGB(10, 15, 30),
-        BackgroundTransparency = 0,
+        BackgroundTransparency = 0.05,
         Topbar = Color3.fromRGB(15, 25, 45),
         TopbarText = Color3.fromRGB(240, 240, 240),
         
@@ -72,31 +80,53 @@ Vexus.Theme = {
         -- Tabs
         TabBackground = Color3.fromRGB(25, 35, 60),
         TabBackgroundSelected = Color3.fromRGB(40, 60, 100),
-        TabText = Color3.fromRGB(220, 220, 220),
+        TabText = Color3.fromRGB(180, 180, 220),
         TabTextSelected = Color3.fromRGB(255, 255, 255),
+        TabHighlight = Color3.fromRGB(0, 170, 255),
+        TabHighlightHover = Color3.fromRGB(0, 200, 255),
         
         -- Special Elements
         ToggleEnabled = Color3.fromRGB(0, 170, 255),
         ToggleDisabled = Color3.fromRGB(80, 80, 80),
         SliderBackground = Color3.fromRGB(30, 45, 70),
-        SliderProgress = Color3.fromRGB(0, 150, 255)
+        SliderProgress = Color3.fromRGB(0, 150, 255),
+        
+        -- Scrollable Content
+        ContentBackground = Color3.fromRGB(15, 20, 35)
     },
     
     -- Alternative Themes
     Dark = {
         Background = Color3.fromRGB(20, 20, 20),
-        Topbar = Color3.fromRGB(30, 30, 30)
+        Topbar = Color3.fromRGB(30, 30, 30),
+        TabBackground = Color3.fromRGB(40, 40, 40),
+        TabBackgroundSelected = Color3.fromRGB(60, 60, 60)
     },
     
     Midnight = {
         Background = Color3.fromRGB(5, 10, 20),
-        Topbar = Color3.fromRGB(10, 20, 35)
+        Topbar = Color3.fromRGB(10, 20, 35),
+        TabHighlight = Color3.fromRGB(0, 120, 215)
+    },
+    
+    Modern = {
+        Background = Color3.fromRGB(240, 240, 240),
+        BackgroundTransparency = 0,
+        Topbar = Color3.fromRGB(50, 50, 50),
+        TopbarText = Color3.fromRGB(255, 255, 255),
+        TabBackground = Color3.fromRGB(240, 240, 240),
+        TabBackgroundSelected = Color3.fromRGB(220, 220, 220),
+        TabText = Color3.fromRGB(80, 80, 80),
+        TabTextSelected = Color3.fromRGB(0, 0, 0),
+        TabHighlight = Color3.fromRGB(0, 120, 215),
+        ElementBackground = Color3.fromRGB(250, 250, 250),
+        ElementText = Color3.fromRGB(50, 50, 50)
     }
 }
 
 --[[
 =================================================================
-SECTION 3: UTILITY FUNCTIONS
+SECTION 3: ENHANCED UTILITY FUNCTIONS
 =================================================================
 ]]
 
@@ -105,7 +135,7 @@ local function CreateRoundedFrame(parent, size, position, bgColor, cornerRadius)
     frame.Size = size
     frame.Position = position
     frame.BackgroundColor3 = bgColor
-    frame.BackgroundTransparency = 0
+    frame.BackgroundTransparency = bgColor == nil and 1 or 0
     frame.BorderSizePixel = 0
     frame.Parent = parent
 
@@ -116,11 +146,12 @@ local function CreateRoundedFrame(parent, size, position, bgColor, cornerRadius)
     return frame
 end
 
-local function CreateStroke(target, color, thickness)
+local function CreateStroke(target, color, thickness, transparency)
     local stroke = Instance.new("UIStroke")
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Color = color
     stroke.Thickness = thickness or 1
+    stroke.Transparency = transparency or 0
     stroke.Parent = target
     return stroke
 end
@@ -138,18 +169,33 @@ local function CreateTextLabel(parent, text, size, position, options)
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.TextYAlignment = options.TextYAlignment or Enum.TextYAlignment.Center
     label.TextWrapped = options.TextWrapped or false
+    label.ClipsDescendants = options.ClipsDescendants or false
     label.Parent = parent
     
     if options.AnchorPoint then
         label.AnchorPoint = options.AnchorPoint
     end
     
+    if options.RichText then
+        label.RichText = true
+    end
+    
     return label
 end
 
-local function CreateInteractiveButton(parent, size, position, callback)
-    local button = CreateRoundedFrame(parent, size, position, Vexus.Theme.Default.ElementBackground)
-    local buttonText = CreateTextLabel(button, "", UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0))
+local function CreateInteractiveButton(parent, size, position, callback, options)
+    options = options or {}
+    local button = CreateRoundedFrame(parent, size, position, options.BackgroundColor or Vexus.Theme.Default.ElementBackground)
+    local buttonText = CreateTextLabel(button, options.Text or "", UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), {
+        TextColor3 = options.TextColor,
+        Font = options.Font,
+        TextSize = options.TextSize,
+        TextXAlignment = Enum.TextXAlignment.Center
+    })
+    
+    if options.Stroke then
+        CreateStroke(button, options.StrokeColor or Vexus.Theme.Default.ElementStroke, options.StrokeThickness or 1)
+    end
     
     local interact = Instance.new("TextButton")
     interact.Text = ""
@@ -157,30 +203,293 @@ local function CreateInteractiveButton(parent, size, position, callback)
     interact.Size = UDim2.new(1, 0, 1, 0)
     interact.Parent = button
     
+    local hoverAnim = TweenService:Create(button, TweenInfo.new(Vexus.Configuration.AnimationSpeed), {
+        BackgroundColor3 = options.HoverColor or Vexus.Theme.Default.ElementBackgroundHover
+    })
+    
+    local leaveAnim = TweenService:Create(button, TweenInfo.new(Vexus.Configuration.AnimationSpeed), {
+        BackgroundColor3 = options.BackgroundColor or Vexus.Theme.Default.ElementBackground
+    })
+    
     interact.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(Vexus.Configuration.AnimationSpeed), {
-            BackgroundColor3 = Vexus.Theme.Default.ElementBackgroundHover
-        }):Play()
+        hoverAnim:Play()
     end)
     
     interact.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(Vexus.Configuration.AnimationSpeed), {
-            BackgroundColor3 = Vexus.Theme.Default.ElementBackground
-        }):Play()
+        leaveAnim:Play()
     end)
     
     interact.MouseButton1Click:Connect(function()
         if callback then
-            pcall(callback)
+            task.spawn(callback)
         end
     end)
     
     return button, buttonText
 end
 
+local function CreateScrollableFrame(parent, size, position, options)
+    options = options or {}
+    local container = CreateRoundedFrame(parent, size, position, options.BackgroundColor or Vexus.Theme.Default.ContentBackground)
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.Position = UDim2.new(0, 0, 0, 0)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = Vexus.Configuration.ScrollBarThickness
+    scrollFrame.ScrollBarImageColor3 = Vexus.Configuration.ScrollBarColor
+    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scrollFrame.Parent = container
+    
+    local scrollBar = scrollFrame:FindFirstChildOfType("UIScrollBar")
+    if scrollBar then
+        scrollBar.ScrollBarInset = Enum.ScrollBarInset.ScrollBar
+        
+        scrollBar.MouseEnter:Connect(function()
+            TweenService:Create(scrollBar, TweenInfo.new(0.15), {
+                ScrollBarImageColor3 = Vexus.Configuration.ScrollBarHoverColor
+            }):Play()
+        end)
+        
+        scrollBar.MouseLeave:Connect(function()
+            TweenService:Create(scrollBar, TweenInfo.new(0.3), {
+                ScrollBarImageColor3 = Vexus.Configuration.ScrollBarColor
+            }):Play()
+        end)
+    end
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, options.Padding or Vexus.Configuration.ElementPadding)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = scrollFrame
+    
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + (options.ExtraPadding or 0))
+    end)
+    
+    return container, scrollFrame
+end
+
 --[[
 =================================================================
-SECTION 4: WINDOW CREATION
+SECTION 4: PREMIUM TAB SYSTEM IMPLEMENTATION
+=================================================================
+]]
+
+local function CreateTabSystem(parent, window, theme, config)
+    local tabSystem = {}
+    local tabs = {}
+    local currentTab = nil
+    
+    -- Tab Bar Container
+    local tabBar = CreateRoundedFrame(parent, UDim2.new(1, -40, 0, config.TabHeight), UDim2.new(0, 20, 0, config.TopbarHeight + 10), Color3.new(0, 0, 0))
+    tabBar.BackgroundTransparency = 1
+    
+    local tabListLayout = Instance.new("UIListLayout")
+    tabListLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabListLayout.Padding = UDim.new(0, config.TabPadding)
+    tabListLayout.Parent = tabBar
+    
+    -- Content Area
+    local contentContainer = CreateRoundedFrame(parent, UDim2.new(1, -40, 1, -config.TopbarHeight - config.TabHeight - 30), UDim2.new(0, 20, 0, config.TopbarHeight + config.TabHeight + 20), theme.ContentBackground or theme.Background)
+    
+    function tabSystem:CreateTab(tabName, tabIcon)
+        local tab = {}
+        local tabId = #tabs + 1
+        
+        -- Tab Button
+        local tabButton = CreateRoundedFrame(tabBar, UDim2.new(0, 0, 1, 0), UDim2.new(0, 0, 0, 0), theme.TabBackground)
+        tabButton.AutomaticSize = Enum.AutomaticSize.X
+        
+        -- Tab Highlight (animated underline)
+        local tabHighlight = CreateRoundedFrame(tabButton, UDim2.new(1, 0, 0, config.TabHighlightThickness), UDim2.new(0, 0, 1, 0), theme.TabHighlight)
+        tabHighlight.AnchorPoint = Vector2.new(0, 1)
+        tabHighlight.Visible = false
+        
+        -- Tab Content
+        local tabContent = CreateRoundedFrame(contentContainer, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), Color3.new(0, 0, 0))
+        tabContent.BackgroundTransparency = 1
+        tabContent.Visible = false
+        
+        -- Scrollable content area
+        local scrollContainer, scrollFrame = CreateScrollableFrame(tabContent, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), {
+            BackgroundColor = theme.ContentBackground or theme.Background,
+            Padding = config.ElementPadding
+        })
+        
+        -- Tab Label
+        local tabLabel = CreateTextLabel(tabButton, tabName, UDim2.new(0, 0, 1, 0), UDim2.new(0, 15, 0, 0), {
+            TextColor3 = theme.TabText,
+            Font = Enum.Font.GothamSemibold,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left
+        })
+        tabLabel.AutomaticSize = Enum.AutomaticSize.X
+        
+        -- Tab Icon (optional)
+        if tabIcon then
+            local icon = Instance.new("ImageLabel")
+            icon.Image = tabIcon
+            icon.Size = UDim2.new(0, 20, 0, 20)
+            icon.Position = UDim2.new(0, 10, 0.5, 0)
+            icon.AnchorPoint = Vector2.new(0, 0.5)
+            icon.BackgroundTransparency = 1
+            icon.Parent = tabButton
+            
+            tabLabel.Position = UDim2.new(0, 40, 0, 0)
+        end
+        
+        -- Tab Button Interactivity
+        local tabInteract = Instance.new("TextButton")
+        tabInteract.Text = ""
+        tabInteract.BackgroundTransparency = 1
+        tabInteract.Size = UDim2.new(1, 0, 1, 0)
+        tabInteract.Parent = tabButton
+        
+        local function SelectTab()
+            -- Deselect current tab
+            if currentTab then
+                currentTab.button.BackgroundColor3 = theme.TabBackground
+                currentTab.highlight.Visible = false
+                currentTab.content.Visible = false
+                
+                TweenService:Create(currentTab.label, TweenInfo.new(config.AnimationSpeed), {
+                    TextColor3 = theme.TabText
+                }):Play()
+            end
+            
+            -- Select new tab
+            currentTab = tabs[tabId]
+            tabButton.BackgroundColor3 = theme.TabBackgroundSelected
+            tabHighlight.Visible = true
+            tabContent.Visible = true
+            
+            TweenService:Create(tabLabel, TweenInfo.new(config.AnimationSpeed), {
+                TextColor3 = theme.TabTextSelected
+            }):Play()
+            
+            TweenService:Create(tabHighlight, TweenInfo.new(config.AnimationSpeed * 1.5, Enum.EasingStyle.Quint), {
+                Size = UDim2.new(1, 0, 0, config.TabHighlightThickness)
+            }):Play()
+        end
+        
+        tabInteract.MouseButton1Click:Connect(SelectTab)
+        
+        -- Hover effects
+        tabInteract.MouseEnter:Connect(function()
+            if currentTab ~= tabs[tabId] then
+                TweenService:Create(tabButton, TweenInfo.new(config.AnimationSpeed), {
+                    BackgroundColor3 = theme.TabBackgroundHover or theme.TabBackgroundSelected
+                }):Play()
+                
+                TweenService:Create(tabHighlight, TweenInfo.new(config.AnimationSpeed), {
+                    BackgroundColor3 = theme.TabHighlightHover or theme.TabHighlight
+                }):Play()
+            end
+        end)
+        
+        tabInteract.MouseLeave:Connect(function()
+            if currentTab ~= tabs[tabId] then
+                TweenService:Create(tabButton, TweenInfo.new(config.AnimationSpeed), {
+                    BackgroundColor3 = theme.TabBackground
+                }):Play()
+                
+                TweenService:Create(tabHighlight, TweenInfo.new(config.AnimationSpeed), {
+                    BackgroundColor3 = theme.TabHighlight
+                }):Play()
+            end
+        end)
+        
+        -- Add to tabs table
+        tabs[tabId] = {
+            button = tabButton,
+            highlight = tabHighlight,
+            content = tabContent,
+            scroll = scrollFrame,
+            label = tabLabel,
+            id = tabId,
+            name = tabName
+        }
+        
+        -- Select first tab automatically
+        if #tabs == 1 then
+            SelectTab()
+        end
+        
+        -- Tab API
+        function tab:Show()
+            SelectTab()
+        end
+        
+        function tab:AddButton(settings)
+            -- Implementation would go here
+            local button = {}
+            return button
+        end
+        
+        function tab:AddToggle(settings)
+            -- Implementation would go here
+            local toggle = {}
+            return toggle
+        end
+        
+        function tab:AddSlider(settings)
+            -- Implementation would go here
+            local slider = {}
+            return slider
+        end
+        
+        function tab:AddDropdown(settings)
+            -- Implementation would go here
+            local dropdown = {}
+            return dropdown
+        end
+        
+        function tab:AddLabel(settings)
+            local label = CreateTextLabel(scrollFrame, settings.Text or "Label", 
+                UDim2.new(1, -20, 0, settings.Height or 20), 
+                UDim2.new(0, 10, 0, 0), {
+                    TextColor3 = settings.TextColor or theme.ElementText,
+                    TextSize = settings.TextSize or 14,
+                    TextXAlignment = settings.Alignment or Enum.TextXAlignment.Left,
+                    Font = settings.Font or Enum.Font.Gotham
+                })
+            
+            return label
+        end
+        
+        function tab:AddSection(title)
+            local section = CreateRoundedFrame(scrollFrame, UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 0), Color3.new(0, 0, 0))
+            section.BackgroundTransparency = 1
+            
+            local sectionLabel = CreateTextLabel(section, string.upper(title), 
+                UDim2.new(1, -20, 1, 0), 
+                UDim2.new(0, 10, 0, 0), {
+                    TextColor3 = theme.TabText,
+                    TextSize = 12,
+                    Font = Enum.Font.GothamBold
+                })
+            
+            local line = Instance.new("Frame")
+            line.Size = UDim2.new(1, -20, 0, 1)
+            line.Position = UDim2.new(0, 10, 1, -5)
+            line.BackgroundColor3 = theme.ElementStroke
+            line.BorderSizePixel = 0
+            line.Parent = section
+            
+            return section
+        end
+        
+        return tab
+    end
+    
+    return tabSystem
+end
+
+--[[
+=================================================================
+SECTION 5: WINDOW CREATION WITH TAB SUPPORT
 =================================================================
 ]]
 
@@ -191,7 +500,7 @@ function Vexus:CreateWindow(settings)
 
     -- Create UI Container
     local VexusUI = Instance.new("ScreenGui")
-    VexusUI.Name = "VexusUI"
+    VexusUI.Name = "VexusUI_" .. HttpService:GenerateGUID(false):sub(1, 8)
     VexusUI.ResetOnSpawn = false
     VexusUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     VexusUI.DisplayOrder = 999
@@ -202,6 +511,8 @@ function Vexus:CreateWindow(settings)
     elseif syn and syn.protect_gui then
         syn.protect_gui(VexusUI)
         VexusUI.Parent = CoreGui
+    elseif CoreGui:FindFirstChild("RobloxGui") then
+        VexusUI.Parent = CoreGui:FindFirstChild("RobloxGui")
     else
         VexusUI.Parent = CoreGui
     end
@@ -229,7 +540,7 @@ function Vexus:CreateWindow(settings)
     -- Topbar
     local Topbar = CreateRoundedFrame(Main, UDim2.new(1, 0, 0, config.TopbarHeight), UDim2.new(0, 0, 0, 0), theme.Topbar)
     local topbarCorner = Instance.new("UICorner")
-    topbarCorner.CornerRadius = config.CornerRadius
+    topbarCorner.CornerRadius = UDim.new(0, 0)
     topbarCorner.Parent = Topbar
 
     -- Title
@@ -238,15 +549,11 @@ function Vexus:CreateWindow(settings)
         UDim2.new(0, 20, 0, 0), {
             Font = Enum.Font.GothamSemibold,
             TextSize = 16,
-            TextColor3 = theme.TopbarText
+            TextColor3 = theme.TopbarText,
+            RichText = true
         })
 
-    --[[
-    =================================================================
-    SECTION 5: PREMIUM CLOSE BUTTON (HOVER-ONLY RED)
-    =================================================================
-    ]]
-
+    -- Close Button
     local CloseButton = Instance.new("Frame")
     CloseButton.Name = "CloseButton"
     CloseButton.Size = UDim2.new(0, config.CloseButtonSize, 0, config.CloseButtonSize)
@@ -290,12 +597,7 @@ function Vexus:CreateWindow(settings)
         }):Play()
     end)
 
-    --[[
-    =================================================================
-    SECTION 6: DRAGGABLE WINDOW (NO SNAPPING)
-    =================================================================
-    ]]
-
+    -- Draggable Window
     local dragging, dragInput, dragStart, startPos
 
     local function UpdateInput(input)
@@ -334,12 +636,7 @@ function Vexus:CreateWindow(settings)
         end
     end)
 
-    --[[
-    =================================================================
-    SECTION 7: MINIMIZE/RESTORE FUNCTIONALITY
-    =================================================================
-    ]]
-
+    -- Minimize/Restore Functionality
     local minimized = false
     local originalSize = config.DefaultWindowSize
     local originalPosition = Main.Position
@@ -358,228 +655,47 @@ function Vexus:CreateWindow(settings)
         end
     end
 
-    -- Minimize Hotkey
+    -- Toggle Visibility Hotkey
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.KeyCode == config.MinimizeHotkey then
-            ToggleMinimize()
+        if not gameProcessed then
+            if input.KeyCode == config.MinimizeHotkey then
+                ToggleMinimize()
+            elseif input.KeyCode == config.ToggleHotkey then
+                Main.Visible = not Main.Visible
+            end
         end
     end)
 
-    --[[
-    =================================================================
-    SECTION 8: CLOSE CONFIRMATION DIALOG
-    =================================================================
-    ]]
+    -- Create Tab System
+    local tabSystem = CreateTabSystem(Main, VexusUI, theme, config)
 
-    local function ShowCloseConfirmation()
-        local overlay = Instance.new("Frame")
-        overlay.Name = "CloseConfirmationOverlay"
-        overlay.Size = UDim2.new(1, 0, 1, 0)
-        overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        overlay.BackgroundTransparency = 0.6
-        overlay.ZIndex = 10
-        overlay.Parent = Main
-
-        local dialog = CreateRoundedFrame(overlay, UDim2.new(0, 350, 0, 180), UDim2.new(0.5, 0, 0.5, 0), theme.NotificationBackground)
-        dialog.AnchorPoint = Vector2.new(0.5, 0.5)
-        dialog.ZIndex = 11
-
-        local title = CreateTextLabel(dialog, "Confirm Close", 
-            UDim2.new(1, -20, 0, 40), 
-            UDim2.new(0, 10, 0, 10), {
-                Font = Enum.Font.GothamSemibold,
-                TextSize = 18,
-                TextColor3 = theme.NotificationTitle
-            })
-
-        local message = CreateTextLabel(dialog, "Are you sure you want to close the Vexus UI?", 
-            UDim2.new(1, -20, 0, 60), 
-            UDim2.new(0, 10, 0, 50), {
-                TextWrapped = true,
-                TextColor3 = theme.NotificationText
-            })
-
-        local buttonContainer = Instance.new("Frame")
-        buttonContainer.BackgroundTransparency = 1
-        buttonContainer.Size = UDim2.new(1, -20, 0, 50)
-        buttonContainer.Position = UDim2.new(0, 10, 1, -60)
-        buttonContainer.ZIndex = 12
-        buttonContainer.Parent = dialog
-
-        local yesButton = CreateRoundedFrame(buttonContainer, UDim2.new(0.4, 0, 1, 0), UDim2.new(0, 0, 0, 0), theme.CloseButtonHover)
-        yesButton.ZIndex = 13
-
-        local yesText = CreateTextLabel(yesButton, "YES", 
-            UDim2.new(1, 0, 1, 0), 
-            UDim2.new(0, 0, 0, 0), {
-                Font = Enum.Font.GothamBold,
-                TextSize = 14,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                TextXAlignment = Enum.TextXAlignment.Center
-            })
-
-        local noButton = CreateRoundedFrame(buttonContainer, UDim2.new(0.4, 0, 1, 0), UDim2.new(0.6, 0, 0, 0), theme.ElementBackground)
-        noButton.ZIndex = 13
-
-        local noText = CreateTextLabel(noButton, "NO", 
-            UDim2.new(1, 0, 1, 0), 
-            UDim2.new(0, 0, 0, 0), {
-                Font = Enum.Font.GothamBold,
-                TextSize = 14,
-                TextColor3 = theme.TextColor,
-                TextXAlignment = Enum.TextXAlignment.Center
-            })
-
-        -- Button interactivity
-        local function SetupButton(button, hoverColor, clickFunc)
-            local originalColor = button.BackgroundColor3
-            
-            button.MouseEnter:Connect(function()
-                TweenService:Create(button, TweenInfo.new(config.AnimationSpeed), {
-                    BackgroundColor3 = hoverColor
-                }):Play()
-            end)
-            
-            button.MouseLeave:Connect(function()
-                TweenService:Create(button, TweenInfo.new(config.AnimationSpeed), {
-                    BackgroundColor3 = originalColor
-                }):Play()
-            end)
-            
-            local buttonClick = Instance.new("TextButton")
-            buttonClick.Text = ""
-            buttonClick.BackgroundTransparency = 1
-            buttonClick.Size = UDim2.new(1, 0, 1, 0)
-            buttonClick.ZIndex = 15
-            buttonClick.Parent = button
-            
-            buttonClick.MouseButton1Click:Connect(function()
-                clickFunc()
-            end)
-        end
-
-        SetupButton(yesButton, Color3.fromRGB(220, 80, 80), function()
-            VexusUI:Destroy()
-        end)
-
-        SetupButton(noButton, theme.ElementBackgroundHover, function()
-            overlay:Destroy()
-        end)
-    end
-
-    closeInteract.MouseButton1Click:Connect(ShowCloseConfirmation)
-
-    --[[
-    =================================================================
-    SECTION 9: PREMIUM BRANDING NOTIFICATION
-    =================================================================
-    ]]
-
-    local function ShowBrandingNotification()
-        local brandingFrame = CreateRoundedFrame(VexusUI, UDim2.new(0, 220, 0, 40), UDim2.new(0, 20, 1, -20), theme.BrandingBackground)
-        brandingFrame.AnchorPoint = Vector2.new(0, 1)
-        brandingFrame.ZIndex = 5
-
-        -- Gradient effect
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 25, 45)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 40, 70))
-        })
-        gradient.Rotation = -15
-        gradient.Parent = brandingFrame
-
-        -- Main text
-        local brandingText = CreateTextLabel(brandingFrame, "MADE BY VEXUS", 
-            UDim2.new(1, -40, 1, 0), 
-            UDim2.new(0, 15, 0, 0), {
-                Font = Enum.Font.GothamBold,
-                TextSize = 14,
-                TextColor3 = theme.BrandingText,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-
-        -- Icon
-        local icon = Instance.new("ImageLabel")
-        icon.Image = "rbxassetid://7072718362" -- Replace with your logo asset ID
-        icon.Size = UDim2.new(0, 24, 0, 24)
-        icon.Position = UDim2.new(1, -30, 0.5, 0)
-        icon.AnchorPoint = Vector2.new(1, 0.5)
-        icon.BackgroundTransparency = 1
-        icon.ZIndex = 6
-        icon.Parent = brandingFrame
-
-        -- Animate entrance
-        brandingFrame.Position = UDim2.new(0, 20, 1, 50)
-        TweenService:Create(brandingFrame, TweenInfo.new(config.AnimationSpeed * 2, Enum.EasingStyle.Quint), {
-            Position = UDim2.new(0, 20, 1, -20)
-        }):Play()
-
-        -- Auto-dismiss after duration
-        delay(config.BrandingDuration, function()
-            TweenService:Create(brandingFrame, TweenInfo.new(config.AnimationSpeed * 2, Enum.EasingStyle.Quint), {
-                Position = UDim2.new(0, 20, 1, 50)
-            }):Play()
-            wait(config.AnimationSpeed * 2)
-            brandingFrame:Destroy()
-        end)
-    end
-
-    --[[
-    =================================================================
-    SECTION 10: WINDOW INITIALIZATION
-    =================================================================
-    ]]
-
+    -- Initialize Window
     Main.Visible = true
     Main.Size = UDim2.new(0, 0, 0, 0)
     TweenService:Create(Main, TweenInfo.new(config.AnimationSpeed * 1.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Size = originalSize
     }):Play()
 
-    TweenService:Create(Title, TweenInfo.new(config.AnimationSpeed * 2), {
-        TextTransparency = 0
-    }):Play()
-
-    -- Show branding after slight delay
-    delay(0.5, ShowBrandingNotification)
-
-    --[[
-    =================================================================
-    SECTION 11: WINDOW API
-    =================================================================
-    ]]
-
+    -- Window API
     local Window = {
         Minimize = ToggleMinimize,
-        Close = ShowCloseConfirmation,
+        ToggleVisibility = function() Main.Visible = not Main.Visible end,
+        Close = function() VexusUI:Destroy() end,
+        
+        CreateTab = function(tabName, tabIcon)
+            return tabSystem:CreateTab(tabName, tabIcon)
+        end,
         
         Notify = function(notificationSettings)
-            -- Implementation would go here
+            -- Notification implementation would go here
         end,
         
-        CreateTab = function(tabName)
-            -- Implementation would go here
-            local Tab = {}
-            return Tab
-        end,
-        
-        CreateButton = function(buttonSettings)
-            -- Implementation would go here
-            local Button = {}
-            return Button
-        end,
-        
-        -- Additional methods would be implemented here
+        SetTheme = function(newTheme)
+            -- Theme switching implementation would go here
+        end
     }
 
     return Window
 end
-
---[[
-=================================================================
-SECTION 12: LIBRARY EXPORT
-=================================================================
-]]
 
 return Vexus
